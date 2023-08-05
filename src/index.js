@@ -47,7 +47,8 @@ async function main() {
     for (let brand of brands) {
       brand.purchaseOrders.forEach((order) => {
         let maxQuantityToShip = order["Units"] * brand.fillRateTarget;
-        // TODO: make sure we record the penalty as maxQTY - shipped * rate * cost per item
+        let numericAmount = parseFloat(order["Amount"].replace("$", ""));
+        let costPerItem = numericAmount / order["Units"];
 
         if (inventory > maxQuantityToShip) {
           // We have plenty of inventory, no need to worry about charges! 😀
@@ -56,14 +57,17 @@ async function main() {
           inventory -= maxQuantityToShip;
         } else if (inventory > 0 && inventory < maxQuantityToShip) {
           // We have inventory to ship, but not enough to cover the maxQuantity we can ship. 🙃
+          let unitsShort = maxQuantityToShip - inventory;
+          let penaltyCharge = unitsShort * brand["penaltyRate"] * costPerItem;
           order["shippedAmount"] = inventory;
-          // assuming each unit costs a dollar here.
-          order["penaltyCharge"] = inventory * brand["penaltyRate"];
+          order["penaltyCharge"] = penaltyCharge;
           inventory = 0;
         } else {
           // We have no more inventory to ship! 🥲
+          let unitsShort = maxQuantityToShip;
+          let penaltyCharge = unitsShort * brand["penaltyRate"] * costPerItem;
           order["shippedAmount"] = 0;
-          order["penaltyCharge"] = order["Units"] * brand["penaltyRate"];
+          order["penaltyCharge"] = penaltyCharge;
         }
       });
     }
@@ -80,7 +84,8 @@ async function main() {
       });
     }
 
-    console.log(`shipped ${totalShipped}`);
+    console.log(`total number of units adds up to ${totalUnits}`);
+    console.log(`shipped ${totalShipped} number of items`);
     console.log(`charges add up to ${totalCharges}`);
   } catch (error) {
     console.error(error);
